@@ -81,3 +81,10 @@ variable "noncurrent_version_expiration_days" {
     error_message = "noncurrent_version_expiration_days must be a whole number of at least 1."
   }
 }
+
+# Access logging variable(s)
+variable "access_log_bucket" {
+  description = "Name of an existing bucket to receive S3 server access logs. Must be in the same account and region, use SSE-S3 encryption, and allow the S3 logging service to write to it. Null disables access logging."
+  type        = string
+  default     = null # null = off, bucket name is the switch to turn it on
+}
