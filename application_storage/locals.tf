@@ -17,4 +17,7 @@ locals {
 
   # KMS when a key is supplied, otherwise SSE-S3
   sse_algorithm = var.kms_key_arn == null ? "AES256" : "aws:kms"
+
+  # caller statements, appended after the module's baseline statements in the bucket policy
+  additional_policy_statements = var.additional_policy_json == null ? [] : jsondecode(var.additional_policy_json).Statement
 }

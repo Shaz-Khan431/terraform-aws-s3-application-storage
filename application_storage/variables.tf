@@ -103,3 +103,16 @@ variable "kms_key_arn" {
     error_message = "kms_key_arn must be a full KMS key ARN (arn:aws:kms:<region>:<account>:key/<id>), not a key ID or alias."
   }
 }
+
+# Custom Bucket Policy Support
+variable "additional_policy_json" {
+  description = "Bucket policy json documents whose statements are added to the module's baseline statements. Usually built with a data.aws_iam_policy_document in the caller's config. Statement must be a list."
+  type        = string
+  default     = null
+
+  validation {
+    # clear error at plan time instead of a jsondecode failure inside the module, ensuring the statements are structured in a list
+    condition     = var.additional_policy_json == null ? true : can(tolist(jsondecode(var.additional_policy_json).Statement))
+    error_message = "additional_policy_json must be a JSON policy document with a Statement list."
+  }
+}
