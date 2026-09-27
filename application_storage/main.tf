@@ -90,3 +90,29 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   # Versioning must be configured before rules that act on noncurrent versions
   depends_on = [aws_s3_bucket_versioning.this]
 }
+
+# Optional with "count", resource is only created when an access_log_bucket is given
+resource "aws_s3_bucket_logging" "this" {
+  count = var.access_log_bucket == null ? 0 : 1
+
+  bucket        = aws_s3_bucket.this.id
+  target_bucket = var.access_log_bucket
+  target_prefix = "s3-access-logs/"
+
+  # Partitioned keys like <prefix>/<account_id>/<region>/<bucket>/YYYY/MM/DD/<file>
+  # so many buckets can share one log bucket, and queries can filter by date.
+  # EventTime files each record under the day the request happened, not when the log was delivered.
+  target_object_key_format {
+    partitioned_prefix {
+      partition_date_source = "EventTime"
+    }
+  }
+
+  # Ensures the access log bucket is not the newly created bucket
+  lifecycle {
+    precondition {
+      condition     = var.access_log_bucket != local.bucket_name
+      error_message = "access_log_bucket can't be the bucket itself; logging to itself creates an endless loop of log files."
+    }
+  }
+}
