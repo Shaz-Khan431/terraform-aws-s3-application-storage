@@ -6,9 +6,9 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      # v6 is what CI tests against
+      # v6.37 added bucket_namespace, needed for account regional bucket names
       # Hashicorp wants minimum only, so consumers can adopt without new module releases
-      version = ">= 6.0"
+      version = ">= 6.37"
     }
   }
 }
