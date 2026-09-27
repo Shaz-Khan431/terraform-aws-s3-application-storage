@@ -42,3 +42,21 @@ variable "purpose" {
     error_message = "purpose may only contain lowercase letters, numbers and hyphens, and must start and end with a letter or number."
   }
 }
+
+# To ensure that all buckets specify the data classification of their contents
+variable "data_classification" {
+  description = "Sensitivity of the data in the bucket. Only options are phi, confidential, or internal."
+  type        = string
+
+  validation {
+    condition     = contains(["phi", "confidential", "internal"], var.data_classification)
+    error_message = "data_classification must be one of: phi, confidential, internal."
+  }
+}
+
+# Additional bucket tags if needed
+variable "tags" {
+  description = "Additional tags for the bucket. The module's standard tags (Application, Environment, Purpose, DataClassification, ManagedBy, Module) take precedence on conflicting keys."
+  type        = map(string)
+  default     = {}
+}
