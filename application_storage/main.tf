@@ -116,3 +116,37 @@ resource "aws_s3_bucket_logging" "this" {
     }
   }
 }
+
+# Baseline statements enforce TLS for every request and the caller statements are appended after them.
+# jsonencode rather than an aws_iam_policy_document data source so the policy can be asserted in plan-only tests.
+resource "aws_s3_bucket_policy" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    # concat joins lists into one. The caller's statements are appended after the baseline,
+    # so they can add to the policy but never remove the TLS statements.
+    Statement = concat([
+      {
+        Sid       = "DenyInsecureTransport"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource  = [local.bucket_arn, "${local.bucket_arn}/*"]
+        Condition = { Bool = { "aws:SecureTransport" = "false" } }
+      },
+      {
+        Sid       = "DenyOutdatedTLS"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource  = [local.bucket_arn, "${local.bucket_arn}/*"]
+        Condition = { NumericLessThan = { "s3:TlsVersion" = "1.2" } }
+      },
+    ], local.additional_policy_statements)
+  })
+
+  # Both change bucket-level settings; running them in parallel can fail with OperationAborted.
+  # Also guarantees public policies are blocked before any caller statements are applied.
+  depends_on = [aws_s3_bucket_public_access_block.this]
+}
