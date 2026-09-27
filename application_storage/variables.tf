@@ -70,7 +70,7 @@ variable "versioning_enabled" {
 }
 
 variable "noncurrent_version_expiration_days" {
-  description = "Days to keep a previous object version before it is permanently deleted. Ignored when versioning_enabled is false."
+  description = "Days to keep a previous object version before it is permanently deleted. Also applies after versioning is turned off, so versions kept from before still expire."
   type        = number
   default     = 90
   nullable    = false

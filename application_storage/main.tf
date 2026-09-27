@@ -47,3 +47,46 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
     blocked_encryption_types = ["SSE-C"]
   }
 }
+
+resource "aws_s3_bucket_versioning" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  versioning_configuration {
+    # Suspended rather than Disabled. S3 can't return a versioned bucket to Disabled,
+    # so Suspended is the only "off" value that also works when turning versioning off later
+    status = var.versioning_enabled ? "Enabled" : "Suspended"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  # Always on since failed multipart uploads leave invisible, billed parts behind
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+  }
+
+  # Always on, even with versioning off: suspending versioning keeps existing old versions,
+  # so this rule still expires them. On a never-versioned bucket it simply has nothing to do.
+  rule {
+    id     = "expire-noncurrent-versions"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = var.noncurrent_version_expiration_days
+    }
+
+    # Remove delete markers once no versions remain behind them
+    expiration {
+      expired_object_delete_marker = true
+    }
+  }
+
+  # Versioning must be configured before rules that act on noncurrent versions
+  depends_on = [aws_s3_bucket_versioning.this]
+}
