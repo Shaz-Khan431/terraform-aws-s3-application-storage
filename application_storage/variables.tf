@@ -88,3 +88,18 @@ variable "access_log_bucket" {
   type        = string
   default     = null # null = off, bucket name is the switch to turn it on
 }
+
+# KMS Key Support
+variable "kms_key_arn" {
+  description = "ARN of an existing customer managed KMS key for default encryption. Null uses SSE-S3 (AES256). Callers writing or reading objects need kms:GenerateDataKey and kms:Decrypt on the key."
+  type        = string
+  default     = null
+
+  validation {
+    # full key arn only because aliases can be repointed to a different key, and bare key IDs don't work across accounts
+    condition = var.kms_key_arn == null ? true : (
+      startswith(var.kms_key_arn, "arn:") && strcontains(var.kms_key_arn, ":key/")
+    )
+    error_message = "kms_key_arn must be a full KMS key ARN (arn:aws:kms:<region>:<account>:key/<id>), not a key ID or alias."
+  }
+}
