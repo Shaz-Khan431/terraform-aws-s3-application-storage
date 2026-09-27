@@ -60,3 +60,24 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# Versioning related variables
+variable "versioning_enabled" {
+  description = "Keep previous versions of objects when they are overwritten or deleted. Setting this to false on a bucket that was already versioned suspends versioning; S3 keeps existing versions until they expire."
+  type        = bool
+  default     = true
+  nullable    = false
+}
+
+variable "noncurrent_version_expiration_days" {
+  description = "Days to keep a previous object version before it is permanently deleted. Ignored when versioning_enabled is false."
+  type        = number
+  default     = 90
+  nullable    = false
+
+  validation {
+    # Must be >=1, and floor() rounds a float down to a whole number, because s3 only accepts whole days of 1 or more, then we equate the rounded down number to the variable. 
+    condition     = var.noncurrent_version_expiration_days >= 1 && floor(var.noncurrent_version_expiration_days) == var.noncurrent_version_expiration_days
+    error_message = "noncurrent_version_expiration_days must be a whole number of at least 1."
+  }
+}

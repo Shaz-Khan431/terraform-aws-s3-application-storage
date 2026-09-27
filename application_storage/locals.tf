@@ -11,4 +11,7 @@ locals {
 
   # standard_tags is mentioned last to ensure that they cannot be overwritten by duplicate entries in var.tags
   tags = merge(var.tags, local.standard_tags)
+
+  # null when versioning is off, so the expiration rule is only created for versioned buckets
+  noncurrent_version_expiration_days = var.versioning_enabled ? var.noncurrent_version_expiration_days : null
 }
