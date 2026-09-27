@@ -1,4 +1,9 @@
 locals {
+  # <application>-<environment>-<purpose>-<account_id>-<region>-an
+  # The -<account_id>-<region>-an suffix places the bucket in the account regional
+  # namespace, so no other AWS account can ever create (or re-create) this name.
+  bucket_name = "${var.application}-${var.environment}-${var.purpose}-${data.aws_caller_identity.current.account_id}-${data.aws_region.current.region}-an"
+
   # tagging standards in one place where the caller cannot override the values
   standard_tags = {
     Application        = var.application
