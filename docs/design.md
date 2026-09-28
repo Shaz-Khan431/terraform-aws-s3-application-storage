@@ -138,6 +138,9 @@ Each example is a provider block and a module call. In `claims/qa` the policy wr
 ARN from the naming convention. Using `module.storage.bucket_arn` inside the same module's input would
 be a circular reference.
 
+`import/claims-dev` shows how to adopt an existing bucket that already follows the naming convention
+(see [Import and migration](#import-and-migration)).
+
 ## Security decisions
 
 ### Account regional namespace
@@ -296,6 +299,59 @@ Plan: 8 to add, 0 to change, 0 to destroy.
 The mocked tests can't show `tags_all`, because the real provider does the `default_tags` merge. This
 plan is how I checked it.
 
+## Import and migration
+
+### Importing an existing bucket
+
+An existing bucket can only be brought under the module if its name already matches what the module
+builds, including the `-<account_id>-<region>-an` suffix. That suffix only exists in the account
+regional namespace, and changing `bucket_namespace` forces a new bucket, so older buckets in the
+global namespace can't be adopted. In practice import covers buckets created with the right name
+outside Terraform, for example in the console or by a deploy that lost its state.
+
+For those, the caller adds an `import` block (Terraform 1.5+) for each resource the module manages,
+not only the bucket. Every one of them uses the bucket name as its ID:
+
+```hcl
+import {
+  to = module.storage.aws_s3_bucket.this
+  id = "claims-dev-remits-111122223333-us-east-1-an"
+}
+```
+
+[`examples/import/claims-dev`](../examples/import/claims-dev) has all eight blocks, including
+`aws_s3_bucket_logging.this[0]` for when logging is on. The ID is written out in each block because
+Terraform 1.5 doesn't allow variables or locals there; CI validates the example on 1.5.7.
+
+The plan then shows every difference between the bucket's current settings and the module's. The
+bucket policy and the lifecycle configuration are each replaced as a whole document, so anything in
+them that the module doesn't define gets removed on apply. Existing policy statements need to move
+into `additional_policy_json` first. The module doesn't accept extra lifecycle rules, so a bucket that
+depends on its own rules isn't a good fit for import.
+
+### Migrating a bucket that doesn't match
+
+Most existing buckets won't match the naming convention, and S3 bucket names can't be changed. Those
+need a new bucket and a move:
+
+1. Find everything that uses the old bucket: server access logs and CloudTrail data events for who's
+   calling it, IAM and bucket policies that reference its ARN, app configs, partner integrations,
+   event notifications and CloudFront origins.
+2. Create the new bucket with the module and grant the same access through IAM and
+   `additional_policy_json`.
+3. Copy the data. S3 Batch Operations or `aws s3 sync` work for current objects. If older versions
+   need to come along, S3 Batch Replication copies objects that already exist. Keeping live
+   replication on from the old bucket to the new one during the switch means new writes still arrive.
+   Replication needs versioning on both buckets and access to the new bucket's KMS key.
+4. Move consumers over one at a time and watch the old bucket's access logs.
+5. Once nothing is using the old bucket, empty it and add a deny-all bucket policy, but don't delete
+   it. A deleted name goes back into the global namespace where anyone can register it and receive
+   requests still pointed at it, which is the same risk the account regional namespace avoids. AWS's
+   bucket naming guidance recommends keeping the bucket for this reason.
+
+For PHI this should happen in a planned change window, with the access review from step 1 kept as a
+record of who had access to the data and where it moved.
+
 ## Assumptions
 
 - One bucket per module call. Teams that need more call the module again with a different `purpose`.
@@ -313,8 +369,8 @@ plan is how I checked it.
 ## Tradeoffs
 
 - Fixed naming keeps names predictable, but the module can't take over existing buckets that are
-  named differently. That would need a `bucket_name` override, which would also let people skip the
-  convention.
+  named differently (see [Import and migration](#import-and-migration)). A `bucket_name` override
+  would allow it, but would also let people skip the convention.
 - The account regional suffix takes about 31 of the 63 characters, so `application` and `purpose` are
   limited to 13 characters each.
 - Reserved S3 prefixes (`xn--`, `sthree-`, `amzn-s3-demo-`) aren't validated. They're rare, and S3

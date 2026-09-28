@@ -14,7 +14,7 @@ More detail on the design, the test matrix and validation output is in
 ```
 application_storage/        the module
   tests/                    plan-only terraform tests (mocked AWS provider)
-examples/                   claims/{dev,qa} and formulary/{dev,qa}
+examples/                   claims/{dev,qa}, formulary/{dev,qa}, import/claims-dev
 docs/design.md              design notes, test matrix, plan output
 .github/workflows/          CI and release automation
 ```
@@ -113,8 +113,9 @@ CI runs the same checks on every PR, along with TFLint, Checkov, a terraform-doc
 
 ## Tradeoffs
 
-- Fixed naming means existing buckets can't be brought under the module, and `application` and
-  `purpose` are limited to 13 characters.
+- Fixed naming limits `application` and `purpose` to 13 characters. Existing buckets can only be
+  imported if their name already matches the convention. Others need to be migrated to a new bucket,
+  covered in [docs/design.md](docs/design.md#import-and-migration).
 - A wrong `access_log_bucket` name fails at apply instead of plan. Checking it at plan would mean
   giving the deploy role read access to the security team's log bucket.
 - Callers adding policy statements have to write out the bucket ARN from the naming convention.
