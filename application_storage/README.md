@@ -9,7 +9,7 @@ security baseline can't be turned off.
 
 ```hcl
 module "storage" {
-  source = "git::https://github.com/Shaz-Khan431/terraform-aws-s3-application-storage.git//application_storage?ref=application_storage/v0.1.0"
+  source = "git::https://github.com/Shaz-Khan431/terraform-aws-s3-application-storage.git?ref=application_storage/v0.1.0"
 
   application         = "claims"
   environment         = "dev"
