@@ -1,4 +1,6 @@
 resource "aws_s3_bucket" "this" {
+  #checkov:skip=CKV_AWS_144:Cross-region replication is a per-application disaster recovery decision, not a baseline default
+  #checkov:skip=CKV2_AWS_62:Event notifications depend on each consumer's architecture and belong outside this module
   bucket = local.bucket_name
 
   # Name must end in -<account_id>-<region>-an; S3 rejects the create if either doesn't match the caller
