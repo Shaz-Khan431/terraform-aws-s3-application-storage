@@ -14,7 +14,7 @@ provider "aws" {
 # Dev churns through test files, so old versions are kept for 30 days instead of 90.
 module "storage" {
   # Consumers outside this repo pin a release tag:
-  # source = "git::https://github.com/Shaz-Khan431/terraform-aws-s3-application-storage.git//application_storage?ref=application_storage/v0.1.0"
+  # source = "git::https://github.com/Shaz-Khan431/terraform-aws-s3-application-storage.git?ref=application_storage/v0.1.0"
   source = "../../../application_storage"
 
   application         = "claims"

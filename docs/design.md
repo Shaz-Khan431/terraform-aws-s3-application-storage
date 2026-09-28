@@ -346,6 +346,12 @@ first release is `v0.1.0`. Changes to only `examples/`, tests or markdown don't 
 The module is in `application_storage/` instead of the repo root because the releaser only finds
 modules in subdirectories.
 
+Each release tag points to a separate commit the releaser creates with only the module's `.tf` files,
+at the root. So the source address has no subdirectory:
+`git::https://github.com/Shaz-Khan431/terraform-aws-s3-application-storage.git?ref=application_storage/v0.1.0`.
+I first documented it with `//application_storage` and found the mistake by running `terraform init`
+against the published tag.
+
 ## With more time
 
 - Use `data_classification` to require a KMS key and access logging for `phi` buckets. This needs

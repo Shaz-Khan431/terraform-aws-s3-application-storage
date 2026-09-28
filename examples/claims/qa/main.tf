@@ -13,7 +13,7 @@ provider "aws" {
 # Same PHI settings as dev with the default 90-day retention, plus cross-account read for reporting
 module "storage" {
   # Consumers outside this repo pin a release tag:
-  # source = "git::https://github.com/Shaz-Khan431/terraform-aws-s3-application-storage.git//application_storage?ref=application_storage/v0.1.0"
+  # source = "git::https://github.com/Shaz-Khan431/terraform-aws-s3-application-storage.git?ref=application_storage/v0.1.0"
   source = "../../../application_storage"
 
   application         = "claims"
