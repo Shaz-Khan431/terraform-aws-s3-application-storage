@@ -1,0 +1,117 @@
+# Validates the module on every pull request and every push to main. Nothing here needs AWS
+# credentials or creates resources. Every check is static analysis or a plan against a mocked
+# provider. The six jobs run in parallel and each one can fail the run on its own.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# CI only reads the repository, it never pushes, tags or comments
+permissions:
+  contents: read
+
+# One run per branch or PR at a time. A newer push makes the older run irrelevant, so it's
+# cancelled. (The releaser does the opposite, because cancelling a release halfway is unsafe.)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Formatting fails if any .tf or .tftest.hcl file isn't in canonical terraform fmt style.
+  # -diff prints exactly what would change, so the fix is obvious from the log.
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v4
+      - run: terraform fmt -check -recursive -diff
+
+  # Syntax, references and types for the module and every example. Runs twice: on the latest
+  # Terraform, and on 1.5.7, the minimum declared in application_storage/versions.tf. If a change
+  # uses a language feature newer than 1.5, the 1.5.7 run fails before a consumer finds out.
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # let both versions finish so a failure on one doesn't hide the other's result
+      matrix:
+        terraform: [latest, 1.5.7]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ matrix.terraform }}
+      # examples/*/*/ picks up every <application>/<environment> folder, so new examples are
+      # validated automatically. -backend=false skips state setup, which validate doesn't need.
+      # ::group:: folds each folder's output into its own collapsible section in the Actions log.
+      - name: Validate module and examples
+        run: |
+          for dir in application_storage examples/*/*/; do
+            echo "::group::$dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+  # Runs the plan-only tests in application_storage/tests. They use a mocked AWS provider,
+  # so they need no credentials, and cover naming, validation rules, security settings,
+  # versioning, logging and outputs. Needs Terraform 1.7+ (mock providers), so latest only.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v4
+      - run: terraform -chdir=application_storage init -backend=false -input=false
+      - run: terraform -chdir=application_storage test
+
+  # Terraform best practices (documented and typed variables/outputs, naming, unused
+  # code, standard file layout) plus AWS-specific checks such as invalid values. Rules are
+  # configured in .tflint.hcl at the repo root.
+  tflint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v0.64.0
+      # Downloads the AWS ruleset plugin declared in .tflint.hcl. The token avoids GitHub API
+      # rate limits on that download.
+      - run: tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      # Module only: the examples are usage demos without their own version constraints, which
+      # the root-module rules would flag. validate already covers the examples.
+      - run: tflint --chdir=application_storage --config "$GITHUB_WORKSPACE/.tflint.hcl" --format compact
+
+  # Checks the module against Checkov's AWS policies (encryption, public access,
+  # logging, and so on). Checks the module deliberately doesn't meet are skipped in main.tf with
+  # the reason next to each one, so any new failure is a real finding.
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: application_storage
+          framework: terraform
+          quiet: true # only print failed checks
+
+  # The inputs/outputs tables in application_storage/README.md are generated from
+  # the code by terraform-docs. This fails if someone changes a variable or output without
+  # regenerating them. To fix locally: terraform-docs -c .terraform-docs.yml application_storage
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      TERRAFORM_DOCS_VERSION: v0.24.0
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install terraform-docs
+        run: |
+          curl -sSLo terraform-docs.tar.gz "https://github.com/terraform-docs/terraform-docs/releases/download/${TERRAFORM_DOCS_VERSION}/terraform-docs-${TERRAFORM_DOCS_VERSION}-linux-amd64.tar.gz"
+          tar -xzf terraform-docs.tar.gz terraform-docs
+          sudo mv terraform-docs /usr/local/bin/
+      - name: Check module README is up to date
+        run: terraform-docs -c .terraform-docs.yml --output-check application_storage
