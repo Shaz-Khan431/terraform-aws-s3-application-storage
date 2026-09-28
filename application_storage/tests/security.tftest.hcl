@@ -19,7 +19,6 @@ variables {
   data_classification = "phi"
 }
 
-# Ensures public access is fully blocked, logic is in main.tf
 run "public_access_fully_blocked" {
   command = plan
 
@@ -34,7 +33,6 @@ run "public_access_fully_blocked" {
   }
 }
 
-# Ensures ACL's are disabled with BucketOwnerEnforced, logic is in main.tf
 run "acls_disabled" {
   command = plan
 
@@ -44,7 +42,6 @@ run "acls_disabled" {
   }
 }
 
-# Ensures Terraform cannot delete buckets with data in it, logic is in main.tf
 run "force_destroy_off" {
   command = plan
 
@@ -54,8 +51,6 @@ run "force_destroy_off" {
   }
 }
 
-# No KMS key was supplied, so this tests for default sse_algorithm value being set to AES256, and the bucket key value being set to false.
-# The nested one()'s represent the structure of the rule within the resource, in main.tf
 run "sse_s3_by_default" {
   command = plan
 
@@ -70,8 +65,6 @@ run "sse_s3_by_default" {
   }
 }
 
-# This tests the exact opposite of the above test, when a KMS key is provided
-# Additionally confirms whether the KMS key that was provided is successfully being used
 run "sse_kms_when_key_given" {
   command = plan
 
@@ -95,7 +88,7 @@ run "sse_kms_when_key_given" {
   }
 }
 
-# Ensures SSE-C is in fact blocked, but since the attribute is a list, the value we compare against must also be a list, logic is in main.tf
+# ["SSE-C"] written in code is a tuple; tolist() makes it comparable to the list attribute
 run "sse_c_blocked" {
   command = plan
 
@@ -105,17 +98,14 @@ run "sse_c_blocked" {
   }
 }
 
-# Policies specified in main.tf
 run "policy_enforces_tls" {
   command = plan
 
-  # Confirms the Sids within the bucket policy in the plan match the tls statements we want to hard code
   assert {
     condition     = [for s in jsondecode(aws_s3_bucket_policy.this.policy).Statement : s.Sid] == ["DenyInsecureTransport", "DenyOutdatedTLS"]
     error_message = "Bucket policy should contain only the two TLS statements by default."
   }
 
-  # This ensures that Effect = Deny AND Principal = * for both statements
   assert {
     condition = alltrue([
       for st in jsondecode(aws_s3_bucket_policy.this.policy).Statement :
@@ -124,21 +114,16 @@ run "policy_enforces_tls" {
     error_message = "TLS statements must be Deny for every principal."
   }
 
-  # Ensures that the module correctly creates the conditional portion of the policy
-  # if aws:SecureTransport = false, then the traffic will be denied
   assert {
     condition     = jsondecode(aws_s3_bucket_policy.this.policy).Statement[0].Condition.Bool["aws:SecureTransport"] == "false"
     error_message = "DenyInsecureTransport should match requests without TLS."
   }
 
-  # Ensures that the module correctly creates the conditional portion of the policy
-  # if NumericLessThan = { "s3:TlsVersion" = "1.2" }, so everything less than TLS 1.2 will be denied
   assert {
     condition     = jsondecode(aws_s3_bucket_policy.this.policy).Statement[1].Condition.NumericLessThan["s3:TlsVersion"] == "1.2"
     error_message = "DenyOutdatedTLS should match TLS versions below 1.2."
   }
 
-  # Ensures the policy successfully applies to the newly created bucket and all objects within that bucket
   assert {
     condition = jsondecode(aws_s3_bucket_policy.this.policy).Statement[0].Resource == [
       "arn:aws:s3:::claims-dev-remits-111122223333-us-east-1-an",
@@ -148,7 +133,6 @@ run "policy_enforces_tls" {
   }
 }
 
-# Pass a policy statement, to ensure that the statement appends correctly to the hardcoded statements
 run "caller_statements_appended_after_baseline" {
   command = plan
 
@@ -186,7 +170,6 @@ run "govcloud_partition_in_policy" {
   }
 }
 
-# Confirms the "kms_key_arn" variable successfully is rejecting all aliases and bare key IDs
 run "rejects_kms_alias" {
   command = plan
 
@@ -207,7 +190,6 @@ run "rejects_bare_kms_key_id" {
   expect_failures = [var.kms_key_arn]
 }
 
-# Confirms the rejections of invalid json formatting and statement structure
 run "rejects_invalid_policy_json" {
   command = plan
 

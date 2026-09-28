@@ -19,8 +19,6 @@ variables {
   data_classification = "phi"
 }
 
-# Ensures bucket logging is disabled if no access logging bucket is supplied
-# count = 0 when no logging bucket is given, so aws_s3_bucket_logging.this is an empty list
 run "bucket_logging_off_by_default" {
   command = plan
 
@@ -30,9 +28,6 @@ run "bucket_logging_off_by_default" {
   }
 }
 
-# Ensures bucket logging is configured correctly, with the proper bucket, prefix, and EventTime partitioning
-# A bucket was given, so count = 1 and the list has exactly one logging configuration.
-# [0] selects that one item and every assertion below reads a different setting of the logging configuration.
 run "bucket_logging_on_with_partitioned_keys" {
   command = plan
 
@@ -56,8 +51,7 @@ run "bucket_logging_on_with_partitioned_keys" {
   }
 }
 
-# Intentionally setting the access logging bucket to the bucket being created, should expect a failure here
-# The precondition in main.tf is what should be rejecting it. 
+# The precondition in main.tf should reject a bucket that logs to itself
 run "rejects_logging_to_itself" {
   command = plan
 

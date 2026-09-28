@@ -19,7 +19,6 @@ variables {
   data_classification = "phi"
 }
 
-# Ensures bucket naming convention is enforced, including the account regional namespace feature
 run "bucket_name_follows_convention" {
   command = plan
 
@@ -34,8 +33,7 @@ run "bucket_name_follows_convention" {
   }
 }
 
-# Ensure the bucket character limit restrictions successfully equate to 63 characters or less as needed,
-# by testing the max character limit for "application" and "purpose" which is 13, and the longest possible region.
+# Worst case: 13-character application and purpose, prod, and one of the longest region names
 run "longest_name_fits_s3_limit" {
   command = plan
 
@@ -56,11 +54,7 @@ run "longest_name_fits_s3_limit" {
   }
 }
 
-
-# Ensures that the tags appended by the caller do not override the standard tagging
-# Test intentionally attempts to override the Environment tag, which is set in the "environment" variable, not in the "tags" variable
-# Ensures that if a new tag unrelated to the standards is added in the "tags" variable, that it appends successfully with no conflict
-# Ensures that all standard tags are present
+# Environment conflicts with a standard tag (standard wins); Team is new and is kept
 run "standard_tags_override_caller_tags" {
   command = plan
 
@@ -141,8 +135,6 @@ run "rejects_application_under_2_characters" {
   expect_failures = [var.application]
 }
 
-# Ensures "environment" variable adheres to the 4 only possible options
-# dev / qa / uat / prod , enforcing naming convention standards
 run "rejects_unknown_environment" {
   command = plan
 
@@ -184,8 +176,6 @@ run "rejects_purpose_over_13_characters" {
   expect_failures = [var.purpose]
 }
 
-# Ensures data classification tag adheres to the only 3 possible options
-# phi / confidential / internal, enforcing tagging standards
 run "rejects_unknown_data_classification" {
   command = plan
 
