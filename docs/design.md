@@ -423,8 +423,13 @@ against the published tag.
 - Pin GitHub Actions to commit SHAs and use Dependabot to update them. Tags can be moved, which is
   what happened in the 2025 tj-actions/changed-files compromise.
 - Manage the branch ruleset in code (the GitHub provider's `github_repository_ruleset`).
-- Nightly apply tests in a sandbox account to cover what mocks can't, like provider defaults and real
-  API validation.
+- Apply tests in a sandbox account to cover what mocks can't, like provider defaults, the
+  `default_tags` merge and real API validation. They'd run on pull requests that change
+  `application_storage/` (not tests or docs): create the bucket, check its settings, then destroy it.
+  Running them after a release would be too late, because the releaser publishes the tag as soon as
+  the PR merges. A monthly scheduled run against the latest AWS provider would catch provider changes
+  that affect consumers without any change to the module, since the module only pins minimum
+  versions.
 
 MFA Delete is out of scope. Only the root user can turn it on, so it can't be managed from a normal
 pipeline.
