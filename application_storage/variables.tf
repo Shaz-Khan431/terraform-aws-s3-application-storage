@@ -106,7 +106,7 @@ variable "kms_key_arn" {
 
 # Custom Bucket Policy Support
 variable "additional_policy_json" {
-  description = "Bucket policy json documents whose statements are added to the module's baseline statements. Usually built with a data.aws_iam_policy_document in the caller's config. Statement must be a list."
+  description = "Bucket policy JSON document whose statements are added after the module's baseline statements, e.g. built with jsonencode(). Statement must be a list."
   type        = string
   default     = null
 
