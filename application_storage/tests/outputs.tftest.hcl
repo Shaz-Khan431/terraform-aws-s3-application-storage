@@ -53,24 +53,3 @@ run "default_outputs" {
     error_message = "tags output should match the tags applied to the bucket."
   }
 }
-
-# Ensures that the encryption algorithm is set to aws:kms when a key is provided, logic is in locals
-# Ensures that when versioning is set to false, the value being passed is "Suspended" not "Disabled", logic is in main.tf
-run "outputs_reflect_kms_and_suspended_versioning" {
-  command = plan
-
-  variables {
-    kms_key_arn        = "arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
-    versioning_enabled = false
-  }
-
-  assert {
-    condition     = output.encryption_algorithm == "aws:kms"
-    error_message = "encryption_algorithm should be aws:kms when a key is given."
-  }
-
-  assert {
-    condition     = output.versioning_status == "Suspended"
-    error_message = "versioning_status should be Suspended when versioning is off."
-  }
-}

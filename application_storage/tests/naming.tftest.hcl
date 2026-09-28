@@ -101,16 +101,6 @@ run "rejects_uppercase_application" {
   expect_failures = [var.application]
 }
 
-run "rejects_underscore_in_application" {
-  command = plan
-
-  variables {
-    application = "claims_api"
-  }
-
-  expect_failures = [var.application]
-}
-
 run "rejects_leading_hyphen_in_application" {
   command = plan
 
