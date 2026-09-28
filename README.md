@@ -127,7 +127,8 @@ CI runs the same checks on every PR, along with TFLint, Checkov, a terraform-doc
 - Optional Object Lock, replication and storage class transitions
 - Fill in the bucket ARN for caller policy statements automatically
 - Pin GitHub Actions to commit SHAs and manage the branch ruleset in code
-- Nightly apply tests in a sandbox account
+- Apply tests in a sandbox account on PRs that change the module (create, check, destroy), plus a
+  monthly run against the latest AWS provider, since only minimum versions are pinned
 
 ## Releasing
 
